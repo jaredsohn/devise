@@ -53,6 +53,12 @@ module Devise
   # True values used to check params
   TRUE_VALUES = [true, 1, '1', 't', 'T', 'true', 'TRUE']
 
+  # Track the configs that user explicit changed the default value. It is
+  # helpfull to not warn users about default values changing when they willing
+  # changed.
+  mattr_accessor :explicit_set_configs
+  @@explicit_set_configs = Set.new
+
   # Secret key used by the key generator
   mattr_accessor :secret_key
   @@secret_key = nil
@@ -82,8 +88,19 @@ module Devise
   @@case_insensitive_keys = [:email]
 
   # Keys that should have whitespace stripped.
-  mattr_accessor :strip_whitespace_keys
+  # TODO: 4.1 Do: @@strip_whitespace_keys = [:email]
+  mattr_reader :strip_whitespace_keys
   @@strip_whitespace_keys = []
+
+  def self.strip_whitespace_keys=(strip_whitespace_keys)
+    explicit_set_configs << :strip_whitespace_keys
+    @@strip_whitespace_keys = strip_whitespace_keys
+  end
+
+  def strip_whitespace_keys=(strip_whitespace_keys)
+    explicit_set_configs << :strip_whitespace_keys
+    @@strip_whitespace_keys = strip_whitespace_keys
+  end
 
   # If http authentication is enabled by default.
   mattr_accessor :http_authenticatable
@@ -104,8 +121,19 @@ module Devise
   # Email regex used to validate email formats. It simply asserts that
   # an one (and only one) @ exists in the given string. This is mainly
   # to give user feedback and not to assert the e-mail validity.
-  mattr_accessor :email_regexp
+  # TODO: 4.1 Do: @@email_regexp = [/\A[^@\s]+@[^@\s]+\z/]
+  mattr_reader :email_regexp
   @@email_regexp = /\A[^@\s]+@([^@\s]+\.)+[^@\W]+\z/
+
+  def self.email_regexp=(email_regexp)
+    explicit_set_configs << :email_regexp
+    @@email_regexp = email_regexp
+  end
+
+  def email_regexp=(email_regexp)
+    explicit_set_configs << :email_regexp
+    @@email_regexp = email_regexp
+  end
 
   # Range validation for password length
   mattr_accessor :password_length
@@ -139,8 +167,19 @@ module Devise
 
   # Defines if email should be reconfirmable.
   # False by default for backwards compatibility.
-  mattr_accessor :reconfirmable
+  # TODO: 4.1 Do: @@reconfirmable = true
+  mattr_reader :reconfirmable
   @@reconfirmable = false
+
+  def self.reconfirmable=(reconfirmable)
+    explicit_set_configs << :reconfirmable
+    @@reconfirmable = reconfirmable
+  end
+
+  def reconfirmable=(reconfirmable)
+    explicit_set_configs << :reconfirmable
+    @@reconfirmable = reconfirmable
+  end
 
   # Time interval to timeout the user session without activity.
   mattr_accessor :timeout_in
@@ -202,8 +241,19 @@ module Devise
   @@mailer_sender = nil
 
   # Skip session storage for the following strategies
-  mattr_accessor :skip_session_storage
+  # TODO: 4.1 Do: @@skip_session_storage = [:http_auth]
+  mattr_reader :skip_session_storage
   @@skip_session_storage = []
+
+  def self.skip_session_storage=(skip_session_storage)
+    explicit_set_configs << :skip_session_storage
+    @@skip_session_storage = skip_session_storage
+  end
+
+  def skip_session_storage=(skip_session_storage)
+    explicit_set_configs << :skip_session_storage
+    @@skip_session_storage = skip_session_storage
+  end
 
   # Which formats should be treated as navigational.
   mattr_accessor :navigational_formats
@@ -214,8 +264,19 @@ module Devise
   @@sign_out_all_scopes = true
 
   # The default method used while signing out
-  mattr_accessor :sign_out_via
+  # TODO: 4.1 Do: @@sign_out_via = :delete
+  mattr_reader :sign_out_via
   @@sign_out_via = :get
+
+  def self.sign_out_via=(sign_out_via)
+    explicit_set_configs << :sign_out_via
+    @@sign_out_via = sign_out_via
+  end
+
+  def sign_out_via=(sign_out_via)
+    explicit_set_configs << :sign_out_via
+    @@sign_out_via = sign_out_via
+  end
 
   # The parent controller all Devise controllers inherits from.
   # Defaults to ApplicationController. This should be set early
@@ -280,6 +341,32 @@ module Devise
   # a fresh initializer with all configuration values.
   def self.setup
     yield self
+
+    warn_default_config_changed(:email_regexp, '/\A[^@\s]+@([^@\s]+\.)+[^@\W]+\z/', '/\A[^@\s]+@[^@\s]+\z/')
+    warn_default_config_changed(:reconfirmable, 'false', 'true')
+    warn_default_config_changed(:sign_out_via, ':get', ':delete')
+    warn_default_config_changed(:skip_session_storage, '[]', '[:http_auth]')
+    warn_default_config_changed(:strip_whitespace_keys, '[]', '[:email]')
+  end
+
+  def self.warn_default_config_changed(config, current_default, new_default)
+    unless config.in?(explicit_set_configs)
+      warn = <<-MESSAGE.strip_heredoc
+        [Devise] config.#{config} will have new default in the Devise 4.1
+        To keep the current behavior please set in your devise.rb initializer file:
+
+          Devise.setup do |#{config}|
+            config.#{config} = #{current_default}
+          end
+
+        If you want to use the new default:
+
+          Devise.setup do |#{config}|
+            config.#{config} = #{new_default}
+          end
+      MESSAGE
+      ActiveSupport::Deprecation.warn(warn) unless :email_regexp.in?(explicit_set_configs)
+    end
   end
 
   class Getter
