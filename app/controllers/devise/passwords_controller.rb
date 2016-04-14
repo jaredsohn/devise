@@ -29,20 +29,31 @@ class Devise::PasswordsController < DeviseController
 
   # PUT /resource/password
   def update
+    puts "devise_test1"
     self.resource = resource_class.reset_password_by_token(resource_params)
+    puts "devise_test2"
     yield resource if block_given?
 
+    puts "devise_test3"
+
     if resource.errors.empty?
+      puts "devise_test4"
+
       resource.unlock_access! if unlockable?(resource)
       if Devise.sign_in_after_reset_password
+        puts "devise_test5"
         flash_message = resource.active_for_authentication? ? :updated : :updated_not_active
         set_flash_message!(:notice, flash_message)
+        puts "devise_test6"
         sign_in(resource_name, resource)
       else
+        puts "devise_test7"
         set_flash_message!(:notice, :updated_not_active)
       end
+      puts "devise_test8"
       respond_with resource, location: after_resetting_password_path_for(resource)
     else
+    puts "devise_test9"
       set_minimum_password_length
       respond_with resource
     end
@@ -50,11 +61,13 @@ class Devise::PasswordsController < DeviseController
 
   protected
     def after_resetting_password_path_for(resource)
+      puts "devise_test10"
       Devise.sign_in_after_reset_password ? after_sign_in_path_for(resource) : new_session_path(resource_name)
     end
 
     # The path used after sending reset password instructions
     def after_sending_reset_password_instructions_path_for(resource_name)
+      puts "devise_test11"
       new_session_path(resource_name) if is_navigational_format?
     end
 
